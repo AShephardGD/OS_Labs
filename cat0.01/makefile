@@ -2,7 +2,7 @@
 
 name = cat
 targetName = $(name).c
-flags = -o $(name)
+flags = -o $(name) -Wall -Wextra -Werror
 
 gcc: $(targetName)
 	gcc $(targetName) $(flags)
