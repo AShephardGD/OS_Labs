@@ -3,9 +3,6 @@
 #include <unistd.h>
 #include <math.h>
 
-
-
-
 const int consoleArgumentsStart = 1;
 
 char isNonBlank = 0;
