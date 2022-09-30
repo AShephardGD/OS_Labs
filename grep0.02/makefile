@@ -1,4 +1,4 @@
-.PHONY: gcc clean
+.PHONY: gcc debug clean
 
 name = grep
 targetName = $(name).c
