@@ -15,6 +15,33 @@ const int consoleArgumentsStart = 1;
 int isAll = 0;
 int isLong = 0;
 
+void resetColor() {
+	printf("\033[0m");
+}
+
+void blue() {
+	printf("\033[0;34m");
+}
+
+void green() {
+	printf("\033[0;32m");
+}
+
+void cyan() {
+	printf("\033[0;36m");
+}
+
+void colorName(char* path) {
+	struct stat pathStat;
+	stat(path, &pathStat);
+	mode_t m = pathStat.st_mode;
+	if (S_ISDIR(m)) blue();
+	else if (S_ISLNK(m)) cyan();
+	else if ((m & S_IFREG) && (m & (S_IXUSR | S_IXGRP | S_IXOTH))) green();
+	printf("%s\n", basename(path));
+	resetColor();
+}
+
 char* getStrFromTime(time_t time) {
 	int len = 21;
 	char* buff = (char*) malloc(len * sizeof(char));
@@ -32,12 +59,7 @@ char* getGroupById(gid_t id) {
 	return g ? g->gr_name : NULL;
 }
 
-void longPrint(char* dir, char* filename) {
-	int pathLen = strlen(dir) + 1 + strlen(filename);
-	char* path = (char*) calloc(pathLen, sizeof(char));
-	strcat(path, dir);
-	strcat(path, "/");
-	strcat(path, filename);
+void longPrint(char* path) {
 	struct stat pathStat;
 	stat(path, &pathStat);
 	mode_t m = pathStat.st_mode;
@@ -87,12 +109,12 @@ void longPrint(char* dir, char* filename) {
 	free(time);
 }
 
-void lsFile(char* path, char* filename) {
-	if ((!isAll && (filename[0] != '.')) || isAll) {
+void lsFile(char* path) {
+	if ((!isAll && (basename(path)[0] != '.')) || isAll) {
 		if (isLong) {
-			longPrint(path, filename);
+			longPrint(path);
 		}
-		printf("%s\n", filename);
+		colorName(path);
 	}
 }
 
@@ -104,12 +126,18 @@ void ls(char* path) {
 		struct dirent* dir = readdir(d);
 		while(dir) {
 			char* filename = dir->d_name;
-			lsFile(path, filename);
+			int pLen = strlen(path) + 1 + strlen(filename);
+			char* p = calloc(pLen, sizeof(char));
+			strcat(p, path);
+			strcat(p, "/");
+			strcat(p, filename);
+			lsFile(p);
+			free(p);
 			dir = readdir(d);
 		}
 		closedir(d);
 	} else {
-		lsFile(dirname(path), basename(path));
+		lsFile(path);
 	}
 }
 
@@ -135,12 +163,14 @@ void handlingArguments(int argc, char **argv) {
 
 int main(int argc, char **argv) {
 	handlingArguments(argc, argv);
-	int i = consoleArgumentsStart + isAll + isLong;
-	if (i != argc) {
-		for (; i < argc; ++i) {
+	int curDir = 1;
+	for (int i = consoleArgumentsStart; i < argc; ++i) {
+		if (argv[i][0] != '-') {
 			ls(argv[i]);
+			curDir = 0;
 		}
-	} else {
+	}
+	if (curDir) {
 		ls("./");
 	}
 	return 0;
