@@ -139,11 +139,11 @@ void lsFile(char* path) {
 }
 
 void ls(char* path) {
-	DIR* d;
-	d = opendir(path);
+	struct dirent **namelist;
+	int n = scandir(path, &namelist, 0, alphasort);
 	printf("<========================= %s =========================>\n", path);
-	if (d) {
-		struct dirent* dir = readdir(d);
+	if (n >= 0) {
+		/*struct dirent* dir = readdir(d);
 		while(dir) {
 			char* filename = dir->d_name;
 			int pLen = strlen(path) + 1 + 1 + strlen(filename) + 1;
@@ -155,7 +155,19 @@ void ls(char* path) {
 			free(p);
 			dir = readdir(d);
 		}
-		closedir(d);
+		closedir(d);*/
+		for (int i = 0; i < n; ++i) {
+			char* filename = namelist[i]->d_name;
+			int pLen = strlen(path) + 1 + 1 + strlen(filename) + 1;
+			char* p = calloc(pLen, sizeof(char));
+			strcat(p, path);
+			strcat(p, "/");
+			strcat(p, filename);
+			lsFile(p);
+			free(p);
+			free(namelist[n]);
+		}
+		free(namelist);
 	} else {
 		lsFile(path);
 	}
