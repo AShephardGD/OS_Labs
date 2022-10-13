@@ -126,7 +126,7 @@ void ls(char* path) {
 		struct dirent* dir = readdir(d);
 		while(dir) {
 			char* filename = dir->d_name;
-			int pLen = strlen(path) + 1 + strlen(filename);
+			int pLen = strlen(path) + 1 + 1 + strlen(filename) + 1;
 			char* p = calloc(pLen, sizeof(char));
 			strcat(p, path);
 			strcat(p, "/");
