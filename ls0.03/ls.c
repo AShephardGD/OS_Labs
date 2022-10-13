@@ -7,6 +7,7 @@
 #include <time.h>
 #include <string.h>
 #include <libgen.h>
+#include <math.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -29,6 +30,25 @@ void green() {
 
 void cyan() {
 	printf("\033[0;36m");
+}
+
+void printNaturalNumber(const size_t num, const size_t maxOrder) {
+	size_t numOrder = 1;
+	while ((size_t) (num / pow(10, numOrder))) {
+		numOrder++;
+	}
+	for (size_t i = 0; i < maxOrder - numOrder; ++i) {
+		printf(" ");
+	}
+	printf("%ld", num);
+}
+
+void printStr(const char* str, const size_t space) {
+	size_t len = strlen(str);
+	for (size_t i = len; i < space; ++i) {
+		printf(" ");
+	}
+	printf("%s", str);
 }
 
 void colorName(char* path) {
@@ -83,24 +103,24 @@ void longPrint(char* path) {
 	fileAccess[7] = (S_IWOTH & m) ? 'w' : '-';
 	fileAccess[8] = (S_IXOTH & m) ? 'x' : '-';
 	printf("%s", fileAccess);
-
 	printf(" ");
-	printf("%ld", pathStat.st_nlink);
+
+	printNaturalNumber(pathStat.st_nlink, 5);
 	printf(" ");
 
 	char* u = getUsernameById(pathStat.st_uid);
 	if (u) {
-		printf("%s", u);
+		printStr(u, 20);
 	}
 	printf(" ");
 
 	char* g = getGroupById(pathStat.st_gid);
 	if (g) {
-		printf("%s", g);
+		printStr(g, 20);
 	}
 	printf(" ");
 
-	printf("%ld", pathStat.st_size);
+	printNaturalNumber(pathStat.st_size, 10);
 	printf(" ");
 
 	char* time = getStrFromTime(pathStat.st_mtime);
