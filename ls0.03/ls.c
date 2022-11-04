@@ -109,15 +109,13 @@ void longPrint(char* path) {
 	printf(" ");
 
 	char* u = getUsernameById(pathStat.st_uid);
-	if (u) {
-		printStr(u, 20);
-	}
+	if (u) printStr(u, 20);
+	else   printNaturalNumber(pathStat.st_uid, 20);
 	printf(" ");
 
 	char* g = getGroupById(pathStat.st_gid);
-	if (g) {
-		printStr(g, 20);
-	}
+	if (g) printStr(g, 20);
+	else   printNaturalNumber(pathStat.st_gid, 20);
 	printf(" ");
 
 	printNaturalNumber(pathStat.st_size, 10);
