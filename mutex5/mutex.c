@@ -1,13 +1,21 @@
 #include<pthread.h>
 #include<stdio.h>
 #include<unistd.h>
+#include<signal.h>
 
 char arr[] = {'a', 0};
+char whileFlag = 1;
+
 const size_t threadCount = 11;
+
 pthread_mutex_t mutex;
 
+void end() {
+	whileFlag = 0;
+}
+
 void* writeThread() {
-	while (1) {
+	while (whileFlag) {
 		pthread_mutex_lock(&mutex);
 		printf("Writer: pthread_mutex_lock()\n");
 		arr[0] = arr[0] + 1;
@@ -21,10 +29,10 @@ void* writeThread() {
 
 void* readThread() {
 	pthread_t tid = pthread_self();
-	while (1) {
+	while (whileFlag) {
 		pthread_mutex_lock(&mutex);
 		printf("Reader: pthread_mutex_lock()\n");
-		printf("%ld: %s\n", tid, arr);
+		printf("%lx: %s\n", tid, arr);
 		sleep(1);
 		printf("Reader: pthread_mutex_unlock()\n\n");
 		pthread_mutex_unlock(&mutex);
@@ -34,6 +42,8 @@ void* readThread() {
 }
 
 void mutexLab() {
+	signal(SIGINT, end);
+	signal(SIGABRT, end);
 	pthread_mutex_init(&mutex, NULL);
 	pthread_t threads[threadCount];
 	pthread_create(&threads[0], NULL, writeThread, NULL);
@@ -43,6 +53,7 @@ void mutexLab() {
 	for (size_t i = 0; i < threadCount; ++i) {
 		pthread_join(threads[i], NULL);
 	}
+	pthread_mutex_destroy(&mutex);
 }
 
 int main() {
