@@ -58,7 +58,6 @@ void writeTask(int fd, int pid) {
 	char* res2 = strcatHeap(res, getCurrentTime());
 	write(fd, res2, bufCount);
 	close(fd);
-
 }
 
 
