@@ -9,6 +9,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+size_t bufCount = 256;
+
 char* strcatHeap(const char* str1, const char* str2) {
 	char* res = calloc(strlen(str1) + strlen(str2) + 1, sizeof(char));
 	strcat(res, str1);
@@ -26,6 +28,16 @@ char* getCurrentTime() {
 
 void readTask(int fd) {
 	unsigned int sec = 14; // 1 + 3 + 3 + 7 = 14
+	while ((sec = sleep(sec)));
+	char buf[bufCount];
+	memset(buf, 0, bufCount);
+	read(fd, buf, bufCount);
+	printf("Mine pid & time - %d & %sParent pid & time - %s", getpid(), getCurrentTime(), buf);
+	close(fd);
+}
+
+void readFTask(int fd) {
+	unsigned int sec = 14; // 1 + 3 + 3 + 7 = 14
 	while ((sec = sleep(sec))) {}
 	FILE* stream = fdopen(fd, "r");
 	if (stream) {
@@ -39,6 +51,18 @@ void readTask(int fd) {
 }
 
 void writeTask(int fd, int pid) {
+	int pidStringLen = (int) ((ceil(log10(pid)) + 1));
+	char pidString[pidStringLen];
+	sprintf(pidString, "%d", pid);
+	char* res = strcatHeap(pidString, " & ");
+	char* res2 = strcatHeap(res, getCurrentTime());
+	write(fd, res2, bufCount);
+	close(fd);
+
+}
+
+
+void writeFTask(int fd, int pid) {
 	int pidStringLen = (int) ((ceil(log10(pid)) + 1));
 	char pidString[pidStringLen];
 	sprintf(pidString, "%d", pid);
@@ -71,10 +95,13 @@ void pipeTask() {
 			perror("Fork");
 			exit(1);
 		case 0:
+			close(pipes[1]);
 			readTask(pipes[0]);
 			exit(0);
 		default:
+			close(pipes[0]);
 			writeTask(pipes[1], getpid());
+			wait(NULL);
 	}
 }
 
@@ -102,6 +129,7 @@ void fifoTask() {
 			exit(0);
 		default:
 			writeTask(fd_fifo, getpid());
+			wait(NULL);
 			unlink(fifoName);
 	}
 }
