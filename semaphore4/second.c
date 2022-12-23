@@ -3,6 +3,7 @@
 #include<sys/shm.h>
 #include<sys/ipc.h>
 #include<sys/stat.h>
+#include<sys/sem.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<unistd.h>
@@ -22,7 +23,7 @@ char* getCurrentTime() {
 	return asctime(info);
 }
 
-void second() {
+void secondOld() {
 	key_t key = ftok(path, id);
 	int shmid = shmget(key, size, 0);
 	if (shmid == -1) {
@@ -38,6 +39,44 @@ void second() {
 	sleep(5);
 	printf("Second: sem_post()\n");
 	sem_post(sem);
+}
+
+void second() {
+	key_t key = ftok(path, id);
+	int semid = semget(key, 1, 0);
+
+	int shmid = shmget(key, size, 0);
+	if (shmid == -1 && semid == -1) {
+		printf("Запустите передающий процесс!\n");
+		exit(1);
+	}
+
+	struct sembuf wait, plus, minus;
+	wait.sem_num = 0;
+	wait.sem_op = 0;
+	wait.sem_flg = 0;
+	plus.sem_num = 0;
+	plus.sem_op = 1;
+	plus.sem_flg = 0;
+	minus.sem_num = 0;
+	minus.sem_op = -1;
+	minus.sem_flg = 0;
+
+	char* mem = (char*) shmat(shmid, NULL, 0);
+	
+	printf("Second: sem wait\n");
+	semop(semid, &wait, 1);
+
+	printf("Second: +semop()\n");
+	semop(semid, &plus, 1);
+	printf("Second(%d): %s%s", getpid(), getCurrentTime(), mem);
+
+	sleep(10);
+
+	printf("Second: -semop()\n");
+	semop(semid, &minus, 1);
+
+	shmdt(mem);
 }
 
 int main() {

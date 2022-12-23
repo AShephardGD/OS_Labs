@@ -3,6 +3,8 @@
 #include<time.h>
 #include<stdlib.h>
 #include<sys/ipc.h>
+#include<sys/types.h>
+#include<sys/sem.h>
 #include<sys/shm.h>
 #include<sys/stat.h>
 #include<errno.h>
@@ -16,7 +18,7 @@ const int id = 228;
 const char* path = "./shmem";
 const char* semName = "/yomom";
 
-int shmid = 0;
+int whileFlag = 1;
 
 char* getCurrentTime() {
 	time_t rawtime;
@@ -27,17 +29,14 @@ char* getCurrentTime() {
 }
 
 void sigHandler() {
-	if (shmid) {
-		shmctl(shmid, IPC_RMID, NULL);
-	}
-	exit(1);
+	whileFlag = 0;
 }
 
-void first() {
+void firstOld() {
 	signal(SIGINT, sigHandler);
 	signal(SIGTERM, sigHandler);
 	key_t key = ftok(path, id);
-	shmid = shmget(key, size, 0666 | IPC_CREAT | IPC_EXCL);
+	int shmid = shmget(key, size, 0666 | IPC_CREAT | IPC_EXCL);
 	if ((shmid == -1) && (errno == EEXIST)) {
 		printf("Программа уже запущена!\n");
 		exit(1);
@@ -52,13 +51,13 @@ void first() {
 		perror("SEM_FAILED");
 		exit(1);
 	}
-	while (1) {
+	char* mem = (char*) shmat(shmid, NULL, 0);
+	while (whileFlag) {
 		printf("First: sem_wait()\n");
 		sem_wait(sem);
 		char str[size];
 		sprintf(str, "%d: %s", getpid(), getCurrentTime());
 		printf("%s", str);
-		char* mem = (char*) shmat(shmid, NULL, 0);
 		memset(mem, 0, size);
 		strcpy(mem, str);
 		sleep(5);
@@ -66,6 +65,68 @@ void first() {
 		sem_post(sem);
 		sleep(5);
 	}
+	shmdt(mem);
+	shmctl(shmid, IPC_RMID, NULL);
+}
+
+void first() {
+	signal(SIGINT, sigHandler);
+	signal(SIGTERM, sigHandler);
+
+	key_t key = ftok(path, id);
+	int semid = semget(key, 1, 0666 | IPC_CREAT | IPC_EXCL);
+	if (semid == -1) {
+		printf("Не удалось создать семафор\n");
+		exit(1);
+	}
+
+	int shmid = shmget(key, size, 0666 | IPC_CREAT | IPC_EXCL);
+	if ((shmid == -1) && (errno == EEXIST)) {
+		printf("Программа уже запущена!\n");
+		exit(1);
+	}
+	else if (shmid == -1) {
+		printf("Не удалось получить разделяемую память");
+		exit(1);
+	}
+	
+	struct sembuf wait, plus, minus;
+	wait.sem_num = 0;
+	wait.sem_op = 0;
+	wait.sem_flg = 0;
+	plus.sem_num = 0;
+	plus.sem_op = 1;
+	plus.sem_flg = 0;
+	minus.sem_num = 0;
+	minus.sem_op = -1;
+	minus.sem_flg = 0;
+
+	char* mem = (char*) shmat(shmid, NULL, 0);
+	while (whileFlag) {
+		printf("First: sem wait\n");
+		semop(semid, &wait, 1);
+
+		printf("First: +semop()\n");
+		semop(semid, &plus, 1);
+		
+		char str[size];
+		sprintf(str, "%d: %s", getpid(), getCurrentTime());
+		printf("%s", str);
+		memset(mem, 0, size);
+		strcpy(mem, str);
+
+		sleep(5);
+
+		printf("First: -semop()\n");
+		semop(semid, &minus, 1);
+		printf("\n");
+
+		sleep(5);
+	}
+
+	shmdt(mem);
+	shmctl(shmid, IPC_RMID, NULL);
+	semctl(semid, IPC_RMID, 0);
 }
 
 int main() {
