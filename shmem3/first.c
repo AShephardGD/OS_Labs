@@ -12,7 +12,7 @@ const size_t size = 256;
 const int id = 228;
 const char* path = "./shmem";
 
-int shmid = 0;
+int whileFlag = 1;
 
 char* getCurrentTime() {
 	time_t rawtime;
@@ -23,17 +23,14 @@ char* getCurrentTime() {
 }
 
 void sigHandler() {
-	if (shmid) {	
-		shmctl(shmid, IPC_RMID, NULL);
-	}
-	exit(1);
+	whileFlag = 0;
 }
 
 void first() {
 	signal(SIGINT, sigHandler);
 	signal(SIGTERM, sigHandler);
 	key_t key = ftok(path, id);
-	shmid = shmget(key, size, 0660 | IPC_CREAT | IPC_EXCL);
+	int shmid = shmget(key, size, 0660 | IPC_CREAT | IPC_EXCL);
 	if ((shmid == -1) && (errno == EEXIST)) {
 		printf("Программа уже запущена!\n");
 		exit(1);
@@ -42,15 +39,17 @@ void first() {
 		printf("Не удалось получить разделяемую память");
 		exit(1);
 	}
-	while (1) {
+	char* mem = (char*) shmat(shmid, NULL, 0);
+	while (whileFlag) {
 		char str[size];
 		sprintf(str, "%d: %s", getpid(), getCurrentTime());
 		printf("%s", str);
-		char* mem = (char*) shmat(shmid, NULL, 0);
 		memset(mem, 0, size);
 		strcpy(mem, str);
 		sleep(5);
-	}	
+	}
+	shmdt(mem);
+	shmctl(shmid, IPC_RMID, NULL);
 }
 
 int main() {
